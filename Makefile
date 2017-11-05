@@ -6,8 +6,8 @@
 # End Compiler Info Output
 
 
-CXX ?= clang++-3.8
-LINK ?= clang++-3.8
+CXX = /usr/local/Cellar/llvm/5.0.0/bin/clang++
+LINK = /usr/local/Cellar/llvm/5.0.0/bin/clang++
 
 
 # Nuke jazz
@@ -31,10 +31,11 @@ FRAMEWORKS ?= -framework QuartzCore \
               -framework AGL
 
 
-CXXFLAGSPOLYNOMIALOPTICS=-fPIC -D_REENTRANT -D_THREAD_SAFE -D_GNU_SOURCE
-CXXFLAGSPOLYNOMIALOPTICS+=-I. -ITruncPoly -IOpticalElements -Iinclude -g -Wall -fno-strict-aliasing
+# polynomial optics compiler flags
+CXXFLAGSPOLYNOMIALOPTICS=-fPIC -D_REENTRANT -D_THREAD_SAFE -D_GNU_SOURCE -fopenmp 
+CXXFLAGSPOLYNOMIALOPTICS+=-I. -ITruncPoly -IOpticalElements -Iinclude -g -Wall -fno-strict-aliasing -I/usr/local/opt/llvm/include -I/usr/local/opt/llvm/include/c++/v1/
 OPTFLAGSPOLYNOMIALOPTICS=-O3 -ffast-math -mfpmath=sse -march=native -DNDEBUG
-LDFLAGSPOLYNOMIALOPTICS=-lm
+LDFLAGSPOLYNOMIALOPTICS=-lm -L/usr/local/opt/llvm/lib -Wl,-rpath,/usr/local/opt/llvm/lib
 
 all: /Users/zeno/polynomialOpticsNuke/src/polynomialOpticsBlur.dylib
 
@@ -42,7 +43,7 @@ all: /Users/zeno/polynomialOpticsNuke/src/polynomialOpticsBlur.dylib
 %.os: %.cpp
 	$(CXX) $(CXXFLAGS) $(CXXFLAGSPOLYNOMIALOPTICS) ${OPTFLAGSPOLYNOMIALOPTICS} -o $(@) $<
 %.dylib: %.os
-	$(LINK) $(LDFLAGSPOLYNOMIALOPTICS) $(LINKFLAGS) $(LIBS) $(FRAMEWORKS) -o $(@) $<
+	$(LINK) $(LDFLAGSPOLYNOMIALOPTICS) $(LINKFLAGS) $(LIBS) $(FRAMEWORKS) -fopenmp -o $(@) $<
 %.a: %.cpp
 	$(CXX) $(CXXFLAGS) $(CXXFLAGSPOLYNOMIALOPTICS) ${OPTFLAGSPOLYNOMIALOPTICS} -o lib$(@) $<
 

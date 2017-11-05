@@ -2,10 +2,7 @@
 
 
 // TODO
-
-// I think there might be a problem with the guard function which locks code to a single thread
-// Whole of polynomial optics code is run in that
-// Check if #pragma actually works or not..
+// figure out how to focus this thing
 
 
 
@@ -55,7 +52,6 @@ using namespace cimg_library;
 
 
 
-
 // Define the C++ class that is the new operator.
 class polynomialOpticsBlur : public Iop {
   // These are the locations the user interface will store into:
@@ -94,7 +90,7 @@ private:
 
 // The constructor must initialize the user controls to their default values:
 polynomialOpticsBlur::polynomialOpticsBlur(Node* node) : Iop(node){
-  sample_mul = 100.0f;
+  sample_mul = 500.0f;
   num_lambdas = 12;
   focusDistance = 5000000; // 5000000 for 5 km
   pupilRadius = 19.5f;
@@ -216,7 +212,7 @@ void polynomialOpticsBlur::engine ( int y, int l, int r, ChannelMask channels, R
 
       // polynomial optics setup
       int degree = 3;
-      int filter_size = 1; // this doesn't get used.. why is it in source?
+      // int filter_size = 1; // this doesn't get used.. why is it in source?
 
       std::cout << "Pupil radius: "<< pupilRadius << std::endl;
 
@@ -260,7 +256,6 @@ void polynomialOpticsBlur::engine ( int y, int l, int r, ChannelMask channels, R
     
       // Precompute spectrum
       float *rgb = new float[3 * num_lambdas];
-      //float *rgb = new float[12];
       for (int ll = 0; ll < num_lambdas; ++ll) {
         float lambda = lambda_from + (lambda_to - lambda_from) * (ll / (float)(num_lambdas-1));
         if (num_lambdas == 1){
@@ -292,7 +287,8 @@ void polynomialOpticsBlur::engine ( int y, int l, int r, ChannelMask channels, R
       // Support of an input image pixel in world plane
       float pixel_size = sensor_width / (float)width / magnification;
 
-
+// check the multithreading of for loop speed
+#pragma omp parallel for
       for (int ll = 0; ll < num_lambdas; ++ll) {
         float lambda = lambda_from + (lambda_to - lambda_from) * (ll / (float)(num_lambdas-1));
         if (num_lambdas == 1) lambda = 550;
@@ -302,14 +298,10 @@ void polynomialOpticsBlur::engine ( int y, int l, int r, ChannelMask channels, R
         System43f system_lambda = system_lambert_cos2.bake_input_variable(4, lambda);
         system_lambda %= degree;
 
-
-// check the multithreading of for loop speed
-#pragma omp parallel for       
         for (int j = 0; j < height; j++) {
 
           if ( aborted() ){
              _lock.unlock();
-            return;
           }
 
           if (!(j%10)) cout << "." << flush;
@@ -406,7 +398,7 @@ void polynomialOpticsBlur::engine ( int y, int l, int r, ChannelMask channels, R
     const float *END = row[z] + r;
     int x = l;
 
-    while ( CUR < END ) {
+    while(CUR < END) {
       int chanNo = z - 1;
       
       if (chanNo < 3) { 
@@ -418,7 +410,6 @@ void polynomialOpticsBlur::engine ( int y, int l, int r, ChannelMask channels, R
   }
 
 }
-
 
 
 
@@ -446,9 +437,9 @@ Transform4f polynomialOpticsBlur::get_system(float lambda, float d0, int degree)
   const float R3 = -1240.67;
 
   return two_plane_5(d0, degree)
-    >> refract_spherical_5(R1,1.f,glass1.get_index(lambda), degree)
+    >> refract_spherical_5(R1, 1.f ,glass1.get_index(lambda), degree)
     >> propagate_5(d1, degree)
-    >> refract_spherical_5(R2,glass1.get_index(lambda),glass2.get_index(lambda), degree)
+    >> refract_spherical_5(R2, glass1.get_index(lambda), glass2.get_index(lambda), degree)
     >> propagate_5(d2, degree)
-    >> refract_spherical_5(R3,glass2.get_index(lambda), 1.f, degree);
+    >> refract_spherical_5(R3, glass2.get_index(lambda), 1.f, degree);
 }
