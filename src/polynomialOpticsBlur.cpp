@@ -92,7 +92,7 @@ private:
 polynomialOpticsBlur::polynomialOpticsBlur(Node* node) : Iop(node){
   sample_mul = 500.0f;
   num_lambdas = 12;
-  focusDistance = 5000000; // 5000000 for 5 km
+  focusDistance = 5000000.0f; // 5000000 for 5 km
   pupilRadius = 19.5f;
 
   _firstTime = true;
@@ -165,7 +165,7 @@ void polynomialOpticsBlur::engine ( int y, int l, int r, ChannelMask channels, R
 
     // Compute whole image using PO only once
     if (_firstTime) {
-      std::cout << "First time " << std::endl;
+      std::cout << "[POLYNOMIALOPTICS]: " << "FIRST TIME" << std::endl;
 
       // get input properties
       Format format = input0().format();
@@ -211,15 +211,15 @@ void polynomialOpticsBlur::engine ( int y, int l, int r, ChannelMask channels, R
 
 
       // polynomial optics setup
-      int degree = 3;
+      const int degree = 3;
       // int filter_size = 1; // this doesn't get used.. why is it in source?
 
-      std::cout << "Pupil radius: "<< pupilRadius << std::endl;
+      std::cout << "[POLYNOMIALOPTICS]: " << "PUPIL RADIUS: "<< pupilRadius << std::endl;
 
       // Sensor scaling
       const float sensor_width = 36;
       const float sensor_scaling = width / sensor_width;
-      std::cout << "Sensor scaling: "<< sensor_scaling << std::endl;
+      std::cout << "[POLYNOMIALOPTICS]: " << "SENSOR SCALING: "<< sensor_scaling << std::endl;
 
       // set min and max wavelengths
       const float lambda_from = 440;
@@ -233,7 +233,7 @@ void polynomialOpticsBlur::engine ( int y, int l, int r, ChannelMask channels, R
       int frame = 26;
       float r_pupil = pupilRadius;
       if (frame < 100) r_pupil = 0.1*sqrt(1.f+frame) * pupilRadius;
-      cout << "r_pupil radius on frame 26: "<<r_pupil<<endl;
+      cout << "[POLYNOMIALOPTICS]: " << "r_pupil radius on frame 26: "<<r_pupil<<endl;
 
        
       // Focus on 550nm
@@ -241,11 +241,11 @@ void polynomialOpticsBlur::engine ( int y, int l, int r, ChannelMask channels, R
 
       // Determine back focal length from degree-1 terms (matrix optics)
       float d3 = find_focus_X(system);
-      std::cout << "Focus: " << d3 << std::endl;
+      std::cout << "[POLYNOMIALOPTICS]: " << "FOCUS: " << d3 << std::endl;
 
       // Compute magnification and output equation system
       float magnification = get_magnification_X(system >> propagate_5(d3));
-      std::cout << "Magnification: " << magnification << std::endl;
+      std::cout << "[POLYNOMIALOPTICS]: " << "MAGNIFICATION: " << magnification << std::endl;
 
       // Add that propagation
       //Transform4f prop = propagate_5(d3, degree);
@@ -287,12 +287,19 @@ void polynomialOpticsBlur::engine ( int y, int l, int r, ChannelMask channels, R
       // Support of an input image pixel in world plane
       float pixel_size = sensor_width / (float)width / magnification;
 
-// check the multithreading of for loop speed
+      std::cout << "[POLYNOMIALOPTICS]: ";
+
+// distribute lambdas over multiple threads
 #pragma omp parallel for
       for (int ll = 0; ll < num_lambdas; ++ll) {
         float lambda = lambda_from + (lambda_to - lambda_from) * (ll / (float)(num_lambdas-1));
         if (num_lambdas == 1) lambda = 550;
-        std::cout << "[" << lambda << "nm]" << flush;
+
+        // cleaner terminal output
+        #pragma omp critical(cout)
+        {
+           std::cout << "[" << lambda << "nm]" << flush;
+        }
 
         // Bake lambda dependency
         System43f system_lambda = system_lambert_cos2.bake_input_variable(4, lambda);
@@ -303,8 +310,6 @@ void polynomialOpticsBlur::engine ( int y, int l, int r, ChannelMask channels, R
           if ( aborted() ){
              _lock.unlock();
           }
-
-          if (!(j%10)) cout << "." << flush;
 
           const float y_sensor = ((j - height/2)/(float)width) * sensor_width;
           const float y_world = y_sensor / magnification;
@@ -377,9 +382,12 @@ void polynomialOpticsBlur::engine ( int y, int l, int r, ChannelMask channels, R
 
 
       _firstTime = false;
-      std::cout << " done " << std::endl;
+      std::cout << " LAMBDAS DONE" << std::endl;
+      std::cout << "[POLYNOMIALOPTICS]: " << "CALCULTIONS FINISHED" << std::endl;
     }
   } // end lock
+
+  
 
 
 
@@ -408,6 +416,8 @@ void polynomialOpticsBlur::engine ( int y, int l, int r, ChannelMask channels, R
       }
     }
   }
+
+  //std::cout << "[POLYNOMIALOPTICS]: " << "PIXELS COPIED TO FRAMEBUFFER" << std::endl;
 
 }
 
