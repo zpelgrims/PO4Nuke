@@ -1,0 +1,83 @@
+#! /Applications/Nuke11.0v1/Nuke11.0v1.app/Contents/MacOS/libnuke-11.0.1.dylib -nx
+#write_info Write1 file:"/Users/zeno/polynomialOpticsNuke/tests/polynomialOpticsBlur_nukeTest.png" format:"919 358 1" chans:":rgba.red:rgba.green:rgba.blue:" framerange:"1 100" fps:"0" colorspace:"default (sRGB)" datatype:"8 bit" transfer:"unknown" views:"main" colorManagement:"Nuke"
+version 11.0 v1
+define_window_layout_xml {<?xml version="1.0" encoding="UTF-8"?>
+<layout version="1.0">
+    <window x="0" y="22" w="1280" h="752" screen="0">
+        <splitter orientation="1">
+            <split size="40"/>
+            <dock id="" hideTitles="1" activePageId="Toolbar.1">
+                <page id="Toolbar.1"/>
+            </dock>
+            <split size="617" stretch="1"/>
+            <splitter orientation="2">
+                <split size="427"/>
+                <dock id="" activePageId="Viewer.1">
+                    <page id="Viewer.1"/>
+                </dock>
+                <split size="300"/>
+                <dock id="" activePageId="DAG.1" focus="true">
+                    <page id="DAG.1"/>
+                    <page id="Curve Editor.1"/>
+                    <page id="DopeSheet.1"/>
+                </dock>
+            </splitter>
+            <split size="615"/>
+            <dock id="" activePageId="Properties.1">
+                <page id="Properties.1"/>
+                <page id="uk.co.thefoundry.backgroundrenderview.1"/>
+            </dock>
+        </splitter>
+    </window>
+</layout>
+}
+Root {
+ inputs 0
+ name /Users/zeno/polynomialOpticsNuke/tests/polynomialOpticsTest.nk
+ format "2048 1556 0 0 2048 1556 1 2K_Super_35(full-ap)"
+ proxy_type scale
+ proxy_format "1024 778 0 0 1024 778 1 1K_Super_35(full-ap)"
+ colorManagement Nuke
+ workingSpaceLUT linear
+ monitorLut sRGB
+ int8Lut sRGB
+ int16Lut sRGB
+ logLut Cineon
+ floatLut linear
+}
+Read {
+ inputs 0
+ file /Users/zeno/polynomialOpticsNuke/tests/cityscape_night.exr
+ format "1838 715 0 0 1838 715 1 "
+ origset true
+ name Read1
+ xpos -114
+ ypos -115
+}
+Reformat {
+ type scale
+ scale 1.0
+ name Reformat1
+ xpos -114
+ ypos -35
+}
+polynomialOpticsBlur {
+ name polynomialOpticsBlur1
+ xpos -114
+ ypos 4
+}
+Write {
+ file /Users/zeno/polynomialOpticsNuke/tests/polynomialOpticsBlur_nukeTest.png
+ file_type png
+ checkHashOnRead false
+ name Write1
+ xpos -114
+ ypos 49
+}
+Viewer {
+ frame_range 1-100
+ colour_sample_bbox {-0.1730141491 -0.2372143567 -0.1708378643 -0.2350380868}
+ name Viewer1
+ xpos -114
+ ypos 143
+}
