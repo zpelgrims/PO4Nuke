@@ -1,6 +1,5 @@
 // Implementation of Polynomial Optics [2012] for Nuke11.
 
-
 // TODO
 // figure out how to focus this thing
 
@@ -83,7 +82,7 @@ public:
   //~polynomialOpticsBlur();
 
 private:
-  Transform4f get_system(float, float,  int = 3);
+  Transform4f get_system(float, float, int=3);
 
 };
 
@@ -92,8 +91,8 @@ private:
 polynomialOpticsBlur::polynomialOpticsBlur(Node* node) : Iop(node){
   sample_mul = 500.0f;
   num_lambdas = 12;
-  focusDistance = 5000000.0f; // 5000000 for 5 km
-  pupilRadius = 19.5f;
+  focusDistance = 500.0f; // 5000000 for 5km, 500 for 5m
+  pupilRadius = 10.0f;
 
   _firstTime = true;
 }
@@ -165,6 +164,8 @@ void polynomialOpticsBlur::engine ( int y, int l, int r, ChannelMask channels, R
 
     // Compute whole image using PO only once
     if (_firstTime) {
+
+      std::cout << std::fixed;
       std::cout << "[POLYNOMIALOPTICS]: " << "FIRST TIME" << std::endl;
 
       // get input properties
@@ -174,8 +175,8 @@ void polynomialOpticsBlur::engine ( int y, int l, int r, ChannelMask channels, R
       const int fr = format.r();
       const int ft = format.t();
 
-      const int height = ft - fy ;
-      const int width = fr - fx ;
+      const int height = ft - fy;
+      const int width = fr - fx;
 
       // the framebuffer we save the input in
       CImg<float> img_in(width, height, 1, 3, 0);
@@ -191,8 +192,7 @@ void polynomialOpticsBlur::engine ( int y, int l, int r, ChannelMask channels, R
         row.get(input0(), ry, fx, fr, readChannels);
 
         if (aborted()){
-          // ?? should I add this ?? 
-          // _lock.unlock();
+          _lock.unlock();
           return;
         }
 
@@ -212,7 +212,6 @@ void polynomialOpticsBlur::engine ( int y, int l, int r, ChannelMask channels, R
 
       // polynomial optics setup
       const int degree = 3;
-      // int filter_size = 1; // this doesn't get used.. why is it in source?
 
       std::cout << "[POLYNOMIALOPTICS]: " << "PUPIL RADIUS: "<< pupilRadius << std::endl;
 
@@ -227,14 +226,6 @@ void polynomialOpticsBlur::engine ( int y, int l, int r, ChannelMask channels, R
 
       // the output is stored here
       img_out = new CImg<float>(width, height, 1, 3, 0);
-
-
-      //tmp
-      int frame = 26;
-      float r_pupil = pupilRadius;
-      if (frame < 100) r_pupil = 0.1*sqrt(1.f+frame) * pupilRadius;
-      cout << "[POLYNOMIALOPTICS]: " << "r_pupil radius on frame 26: "<<r_pupil<<endl;
-
        
       // Focus on 550nm
       Transform4f system = get_system(550, focusDistance, degree);
@@ -248,16 +239,14 @@ void polynomialOpticsBlur::engine ( int y, int l, int r, ChannelMask channels, R
       std::cout << "[POLYNOMIALOPTICS]: " << "MAGNIFICATION: " << magnification << std::endl;
 
       // Add that propagation
-      //Transform4f prop = propagate_5(d3, degree);
-      Transform4f prop = propagate_5(d3 - ((frame>=100)?(0.02*(frame-100)):0), degree);
+      Transform4f prop = propagate_5(d3, degree);
       system = system >> prop;
 
-
-    
       // Precompute spectrum
       float *rgb = new float[3 * num_lambdas];
       for (int ll = 0; ll < num_lambdas; ++ll) {
         float lambda = lambda_from + (lambda_to - lambda_from) * (ll / (float)(num_lambdas-1));
+        
         if (num_lambdas == 1){
           lambda = 550;
         }
@@ -265,8 +254,6 @@ void polynomialOpticsBlur::engine ( int y, int l, int r, ChannelMask channels, R
         // Convert wavelength to spectral power
         spectrum_p_to_rgb(lambda, 1, rgb + 3 * ll);
       }
-
-
 
       // Sample optical system at two spectral locations
       Transform4d system_spectral_center = get_system(500, focusDistance) >> prop;
@@ -331,16 +318,16 @@ void polynomialOpticsBlur::engine ( int y, int l, int r, ChannelMask channels, R
             // Quasi-importance sampling: 
             // pick number of samples according to pixel intensity
             int num_samples = max(1,(int)(L_in * sample_mul));
-            float sample_weight = L_in / num_samples;
+            float sample_weight = L_in / num_samples / (float)num_lambdas;
           
             // With that, we can now start sampling the aperture:
             for (int sample = 0; sample < num_samples; ++sample) {
               // Rejection-sample points from lens aperture:
               float x_ap, y_ap;
               do {
-                x_ap = (rand() / (float)RAND_MAX - 0.5) * 2 * r_pupil;
-                y_ap = (rand() / (float)RAND_MAX - 0.5) * 2 * r_pupil;
-              } while (x_ap * x_ap + y_ap * y_ap > r_pupil * r_pupil);
+                x_ap = (rand() / (float)RAND_MAX - 0.5) * 2 * pupilRadius;
+                y_ap = (rand() / (float)RAND_MAX - 0.5) * 2 * pupilRadius;
+              } while (x_ap * x_ap + y_ap * y_ap > pupilRadius * pupilRadius);
             
               float in[5], out[4];
 
